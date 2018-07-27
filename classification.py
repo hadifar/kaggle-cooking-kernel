@@ -30,7 +30,6 @@ def generate_text(data):
 
 if __name__ == '__main__':
     print('load data..')
-    # data_helper = DataHelper()
     train_data, test_data = DataHelper.load_preprocess_json()
     target = [doc for doc in train_data.cuisine]
     lb = LabelEncoder()
@@ -54,8 +53,8 @@ if __name__ == '__main__':
 
     model = keras.Sequential()
 
-    # model.add(keras.layers.Embedding(vocab_size, 64))
-    # model.add(keras.layers.GlobalAveragePooling1D())
+    model.add(keras.layers.Embedding(vocab_size, 64))
+    model.add(keras.layers.GlobalAveragePooling1D())
     model.add(keras.layers.Dense(200, activation=tf.nn.relu, input_dim=145))
     model.add(keras.layers.Dense(100, activation=tf.nn.relu))
     model.add(keras.layers.Dense(20, activation=tf.nn.softmax))
