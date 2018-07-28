@@ -14,18 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import xgboost as xgb
 from sklearn import linear_model
 from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
+from sklearn.naive_bayes import MultinomialNB
 from sklearn.preprocessing import LabelEncoder
-from sklearn.svm import LinearSVC
-from sklearn.svm import SVC
+from sklearn.svm import LinearSVC, SVC
 
 from data_helper import DataHelper
 
 if __name__ == '__main__':
-    train_feature, train_label, test_feature = DataHelper.get_vectorized_feature()
-    
+    train_feature, train_label, test_feature = DataHelper.get_tfidf_vectorize()
+
     lb = LabelEncoder()
     train_label = lb.fit_transform(train_label)
 
@@ -35,13 +36,20 @@ if __name__ == '__main__':
     log_prediction = logreg.predict(test_feature)
     log_prediction = lb.inverse_transform(log_prediction)
     DataHelper.save_submission('logregression', log_prediction)
-    #
+
     print('start SGD')
     sgd = linear_model.SGDClassifier(random_state=0, max_iter=1000, tol=1e-3)
     sgd.fit(train_feature, train_label)
     sgd_prediction = sgd.predict(test_feature)
     sgd_prediction = lb.inverse_transform(sgd_prediction)
     DataHelper.save_submission('sgd', sgd_prediction)
+
+    print('start Naive bayes')
+    naive = MultinomialNB()
+    naive.fit(train_feature, train_label)
+    naive_prediction = naive.predict(test_feature)
+    naive_prediction = lb.inverse_transform(naive_prediction)
+    DataHelper.save_submission('naive_bayes', naive_prediction)
 
     print('start LinearSVC')
     linearsvm = LinearSVC(C=1.0, random_state=0, multi_class='crammer_singer', dual=False, max_iter=1500)
@@ -60,3 +68,17 @@ if __name__ == '__main__':
     svc_prediction = model.predict(test_feature)
     svc_prediction = lb.inverse_transform(svc_prediction)
     DataHelper.save_submission('svc', svc_prediction)
+
+    print('XGBoost')
+    xgboost = xgb.XGBClassifier(max_depth=6, n_estimators=1000, learning_rate=0.1
+                                , min_child_weight=5,
+                                gamma=1,
+                                subsample=0.8,
+                                colsample_bytree=0.8,
+                                nthread=4,
+                                scale_pos_weight=1,
+                                )
+    xgboost.fit(train_feature, train_label)
+    xgb_prediction = xgboost.predict(test_feature)
+    xgb_prediction = lb.inverse_transform(xgb_prediction)
+    DataHelper.save_submission('xgb', xgb_prediction)
