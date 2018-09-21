@@ -14,18 +14,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-from data_helper import DataHelper
-
-if __name__ == '__main__':
-    train_data, test_data = DataHelper.load_preprocess_json()
-    train_label = [doc for doc in train_data.cuisine]
-
-    cos_dic = {}
-    for label in train_label:
-        if label in cos_dic:
-            cos_dic[label] = cos_dic[label] + 1
-        else:
-            cos_dic[label] = 1
-
-    for dic in cos_dic.items():
-        print(dic)
