@@ -146,6 +146,7 @@ class DataHelper:
     @staticmethod
     def save_submission(file_name, y_pred):
         _, test_df = DataHelper.load_preprocess_json()
+        test_df = test_df[0:50]
         # Submission
         print("Generate Submission File for ", file_name)
         test_id = [doc for doc in test_df.id]
