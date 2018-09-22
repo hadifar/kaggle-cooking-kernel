@@ -14,15 +14,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+import os
 import re
 
+import numpy as np
 import pandas as pd
 from nltk.stem import WordNetLemmatizer
+from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
 class DataHelper:
-    dataset_path = '/Users/mac/PycharmProjects/cooking-kernel/dataset/'
+    dataset_path = './dataset/'
     word_index_name = 'word_to_index'
 
     @staticmethod
@@ -57,17 +60,9 @@ class DataHelper:
 
     @staticmethod
     def load_preprocess_json():
-        train_df = DataHelper._load_train()
-        test_df = DataHelper._load_test()
+        train_df = pd.read_json(DataHelper.dataset_path + 'train2.json')
+        test_df = pd.read_json(DataHelper.dataset_path + 'test2.json')
         return train_df, test_df
-
-    @staticmethod
-    def _load_test():
-        return pd.read_json(DataHelper.dataset_path + 'test2.json')
-
-    @staticmethod
-    def _load_train():
-        return pd.read_json(DataHelper.dataset_path + 'train2.json')
 
     @staticmethod
     def generate_text(data):
@@ -76,17 +71,49 @@ class DataHelper:
 
     @staticmethod
     def get_tfidf_vectorize():
-        print('start vectorized...')
         train_df, test_df = DataHelper.load_preprocess_json()
-        vect = TfidfVectorizer()
-
-        train_features = vect.fit_transform(DataHelper.generate_text(train_df))
-        test_features = vect.transform(DataHelper.generate_text(test_df))
-
         train_label = [doc for doc in train_df.cuisine]
-        print('finish vectorized...')
 
-        return train_features, train_label, test_features
+        if os.path.isfile('./dataset/tfidf_train.npy'):
+            print('load tfidf...')
+            tfidf_train = np.load('./dataset/tfidf_train.npy')
+            tfidf_test = np.load('./dataset/tfidf_test.npy')
+            return tfidf_train, train_label, tfidf_test
+
+        print('start vectorized...')
+        vect = TfidfVectorizer()
+        train_text = DataHelper.generate_text(train_df)
+        test_text = DataHelper.generate_text(test_df)
+        vect = vect.fit(train_text + test_text)
+        tfidf_train = vect.transform(train_text)
+        tfidf_test = vect.transform(test_text)
+
+        tfidf_train = tfidf_train.toarray()
+        tfidf_test = tfidf_test.toarray()
+        print('finish vectorized...')
+        np.save('./dataset/tfidf_train.npy', tfidf_train)
+        np.save('./dataset/tfidf_test.npy', tfidf_test)
+
+        return tfidf_train, train_label, tfidf_test
+
+    @staticmethod
+    def get_lda_topics(train, test):
+        if os.path.isfile('./dataset/lda_train.npy'):
+            print('load lda...')
+            lda_train = np.load('./dataset/lda_train.npy')
+            lda_test = np.load('./dataset/lda_test.npy')
+            return lda_train, lda_test
+
+        print('lda started...')
+
+        lda_model = LatentDirichletAllocation(n_components=20, max_iter=40, n_jobs=-1, learning_method='batch')
+        all_data = np.concatenate([train, test], axis=0)
+        lda_model = lda_model.fit(all_data)
+        lda_train, lda_test = lda_model.transform(train), lda_model.transform(test)
+        print('lda finished...')
+        np.save('./dataset/lda_train.npy', lda_train)
+        np.save('./dataset/lda_test.npy', lda_test)
+        return lda_train, lda_test
 
     @staticmethod
     def get_bigram_vectorize():
@@ -100,7 +127,7 @@ class DataHelper:
         train_label = [doc for doc in train_df.cuisine]
         print('finish vectorized...')
 
-        return train_features, train_label, test_features
+        return train_features.toarray(), train_label, test_features.toarray()
 
     @staticmethod
     def get_unigram_vectorize():
@@ -118,7 +145,7 @@ class DataHelper:
 
     @staticmethod
     def save_submission(file_name, y_pred):
-        test_df = DataHelper._load_test()
+        _, test_df = DataHelper.load_preprocess_json()
         # Submission
         print("Generate Submission File for ", file_name)
         test_id = [doc for doc in test_df.id]
